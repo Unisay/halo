@@ -3,8 +3,7 @@ module Main where
 import Prelude
 
 import Data.Bounded.Generic (genericBottom, genericTop)
-import Data.Enum (class BoundedEnum, class Enum)
-import Data.Enum (enumFromTo, upFromIncluding)
+import Data.Enum (class BoundedEnum, class Enum, enumFromTo, upFromIncluding)
 import Data.Enum.Generic
   ( genericCardinality
   , genericFromEnum
@@ -83,7 +82,7 @@ readCommand = do
 commandHelp ∷ Aff Unit
 commandHelp = do
   T.printLn "Available commands:"
-  for_ (upFromIncluding bottom :: Array Command) \cmd →
+  for_ (upFromIncluding bottom ∷ Array Command) \cmd →
     T.printLn $ " - " <> show cmd
 
 commandTest ∷ Aff Unit
