@@ -3,14 +3,16 @@
   [ "aff"
   , "aff-promise"
   , "console"
-  -- , "debug"
   , "effect"
+  , "either"
   , "enums"
   , "foldable-traversable"
   , "maybe"
   , "nullable"
   , "prelude"
   , "strings"
+  , "tailrec"
+  , "transformers"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

@@ -55,12 +55,12 @@ getCursorLocation' term = liftAff do
 getCursorLocation ∷ ∀ m. MonadAff m ⇒ m Location
 getCursorLocation = getCursorLocation' defaultTerminal
 
-foreign import _processExit ∷ EffectFn2 Terminal Int Unit
+foreign import _processExit ∷ ∀ a. EffectFn2 Terminal Int a
 
-processExit' ∷ ∀ m. MonadEffect m ⇒ Terminal → Int → m Unit
+processExit' ∷ ∀ a m. MonadEffect m ⇒ Terminal → Int → m a
 processExit' term code = liftEffect $ runEffectFn2 _processExit term code
 
-processExit ∷ ∀ m. MonadEffect m ⇒ Int → m Unit
+processExit ∷ ∀ a m. MonadEffect m ⇒ Int → m a
 processExit = processExit' defaultTerminal
 
 foreign import _print ∷ EffectFn2 Terminal String Unit
@@ -135,8 +135,8 @@ type InputFieldOptions =
 
 foreign import inputFieldOptions ∷ InputFieldOptions
 
-foreign import _inputField ∷
-  EffectFn2 Terminal InputFieldOptions (Promise (Nullable String))
+foreign import _inputField
+  ∷ EffectFn2 Terminal InputFieldOptions (Promise (Nullable String))
 
 inputField'
   ∷ ∀ m

@@ -3,47 +3,31 @@ module Main where
 import Prelude
 
 import Data.Bounded.Generic (genericBottom, genericTop)
+import Data.Either (Either(..))
 import Data.Enum (class BoundedEnum, class Enum, enumFromTo, upFromIncluding)
-import Data.Enum.Generic
-  ( genericCardinality
-  , genericFromEnum
-  , genericPred
-  , genericSucc
-  , genericToEnum
-  )
+import Data.Enum.Generic (genericCardinality, genericFromEnum, genericPred, genericSucc, genericToEnum)
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (maybe)
+import Data.Maybe (Maybe(..))
 import Data.Show.Generic (genericShow)
 import Data.String (trim)
 import Data.Traversable (for_)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
 import Effect.Class (liftEffect)
+import Repl (Result(..), replConfig, runRepl)
 import Terminal.Kit as T
 import Terminal.Kit.Color (Color8(..), Ground(..), Tone(..))
 import Terminal.Kit.Color as C
 
 main ∷ Effect Unit
-main = launchAff_ (loop Ok)
-  where
-  loop r = do
-    T.print "Halo"
-    C.withColor Fore Dark (statusColor r) \_ → T.print " ➤ "
-    readCommand >>= case _ of
-      Help → commandHelp *> loop Ok
-      Test → commandTest *> loop Ok
-      Skip → loop Ok
-      Exit → T.processExit 0
-      Unknown → T.printLn "Unknown command" *> loop Error
+main = launchAff_ do
+  runRepl replConfig
+    { banner = "Halo"
+    , parseCommand = parseCommand
+    , evalCommand = evalCommand
+    }
 
-statusColor ∷ Result → Color8
-statusColor = case _ of
-  Error → Red
-  Ok → Green
-
-data Result = Error | Ok
-
-data Command = Skip | Help | Exit | Test | Unknown
+data Command = Help | Test
 
 derive instance Eq Command
 derive instance Ord Command
@@ -65,19 +49,20 @@ instance BoundedEnum Command where
   fromEnum = genericFromEnum
   cardinality = genericCardinality
 
-readCommand ∷ Aff Command
-readCommand = do
-  command ← T.inputField T.inputFieldOptions { cancelable = true }
-  T.nextLine 1
-  pure case maybe "" trim command of
-    "help" → Help
-    "h" → Help
-    "?" → Help
-    "exit" → Exit
-    "quit" → Exit
-    "test" → Test
-    "" → Skip
-    _ → Unknown
+parseCommand ∷ String → Either String (Maybe Command)
+parseCommand command =
+  case trim command of
+    "help" → Right (Just Help)
+    "h" → Right (Just Help)
+    "?" → Right (Just Help)
+    "test" → Right (Just Test)
+    _ → Right Nothing
+
+evalCommand ∷ Command → Aff Result
+evalCommand command =
+  Ok <$ case command of
+    Help → commandHelp
+    Test → commandTest
 
 commandHelp ∷ Aff Unit
 commandHelp = do
