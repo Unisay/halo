@@ -3,3 +3,5 @@ output
 .spago
 .direnv
 .psci_modules
+.psc-ide-port
+node_modules

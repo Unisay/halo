@@ -1,10 +1,16 @@
 { name = "halo"
 , dependencies =
-  [ "console"
-  , "dodo-printer"
+  [ "aff"
+  , "aff-promise"
+  , "console"
+  -- , "debug"
   , "effect"
+  , "enums"
+  , "foldable-traversable"
+  , "maybe"
+  , "nullable"
   , "prelude"
-  -- , "purescript-language-cst-parser"
+  , "strings"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

@@ -1,0 +1,20 @@
+{
+  "name": "halo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "spago test"
+  },
+  "keywords": [
+    "codegen"
+  ],
+  "author": "Unisay",
+  "license": "ISC",
+  "dependencies": {
+    "terminal-kit": "^2.4.0"
+  }
+}
