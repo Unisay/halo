@@ -6,6 +6,12 @@ module Terminal.Kit
   , getCursorLocation
   , processExit'
   , processExit
+  , grabInputOptions
+  , grabInput'
+  , grabInput
+  , releaseInput'
+  , releaseInput
+  , onKey
   , print'
   , print
   , printLn
@@ -31,9 +37,10 @@ import Control.Promise (Promise, toAff)
 import Data.Maybe (Maybe)
 import Data.Nullable (Nullable)
 import Data.Nullable as Nullable
+import Effect (Effect)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
-import Effect.Uncurried (EffectFn1, EffectFn2, runEffectFn1, runEffectFn2)
+import Effect.Uncurried (EffectFn1, EffectFn2, EffectFn3, mkEffectFn3, runEffectFn1, runEffectFn2)
 import Terminal.Kit.Terminal (Terminal, defaultTerminal)
 
 foreign import _fullscreen ∷ EffectFn2 Terminal Boolean Unit
@@ -62,6 +69,41 @@ processExit' term code = liftEffect $ runEffectFn2 _processExit term code
 
 processExit ∷ ∀ a m. MonadEffect m ⇒ Int → m a
 processExit = processExit' defaultTerminal
+
+type GrabInputOptions = { mouse ∷ Nullable String, focus ∷ Nullable Boolean }
+
+grabInputOptions ∷ GrabInputOptions
+grabInputOptions = { mouse: Nullable.null, focus: Nullable.null }
+
+foreign import _grabInput ∷ EffectFn2 Terminal GrabInputOptions Unit
+
+grabInput' ∷ ∀ m. MonadEffect m ⇒ Terminal → GrabInputOptions → m Unit
+grabInput' term opts = liftEffect $ runEffectFn2 _grabInput term opts
+
+grabInput ∷ ∀ m. MonadEffect m ⇒ GrabInputOptions → m Unit
+grabInput = grabInput' defaultTerminal
+
+foreign import _releaseInput ∷ EffectFn1 Terminal Unit
+
+releaseInput' ∷ ∀ m. MonadEffect m ⇒ Terminal → m Unit
+releaseInput' = liftEffect <<< runEffectFn1 _releaseInput
+
+releaseInput ∷ ∀ m. MonadEffect m ⇒ m Unit
+releaseInput = releaseInput' defaultTerminal
+
+type KeyEvent = { isCharacter ∷ Boolean, codepoint ∷ Nullable Int }
+
+foreign import _onKey
+  ∷ EffectFn2 Terminal (EffectFn3 String (Array String) KeyEvent Unit) Unit
+
+onKey
+  ∷ ∀ m
+  . MonadEffect m
+  ⇒ (String → Array String → KeyEvent → Effect Unit)
+  → m Unit
+onKey callback = liftEffect
+  $ runEffectFn2 _onKey defaultTerminal
+  $ mkEffectFn3 callback
 
 foreign import _print ∷ EffectFn2 Terminal String Unit
 
@@ -150,4 +192,3 @@ inputField' term opts = liftAff do
 
 inputField ∷ ∀ m. MonadAff m ⇒ InputFieldOptions → m (Maybe String)
 inputField = inputField' defaultTerminal
-

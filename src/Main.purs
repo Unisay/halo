@@ -14,7 +14,7 @@ import Data.Traversable (for_)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
 import Effect.Class (liftEffect)
-import Repl (Result(..), replConfig, runRepl)
+import Repl (Next(..), Result(..), replConfig, runRepl)
 import Terminal.Kit as T
 import Terminal.Kit.Color (Color8(..), Ground(..), Tone(..))
 import Terminal.Kit.Color as C
@@ -60,15 +60,20 @@ parseCommand command =
 
 evalCommand ∷ Command → Aff Result
 evalCommand command =
-  Ok <$ case command of
+  Ok Continue <$ case command of
     Help → commandHelp
     Test → commandTest
 
 commandHelp ∷ Aff Unit
 commandHelp = do
-  T.printLn "Available commands:"
+  T.printLn "^+Available commands:^-"
   for_ (upFromIncluding bottom ∷ Array Command) \cmd →
-    T.printLn $ " - " <> show cmd
+    T.printLn $ describeCommand cmd
+
+describeCommand ∷ Command → String
+describeCommand = case _ of
+  Help → "^bhelp^ - outputs this help."
+  Test → "^btest^ - outputs 256 terminal colors."
 
 commandTest ∷ Aff Unit
 commandTest = liftEffect do
