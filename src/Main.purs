@@ -4,7 +4,7 @@ import Prelude
 
 import Data.Bounded.Generic (genericBottom, genericTop)
 import Data.Either (Either(..))
-import Data.Enum (class BoundedEnum, class Enum, enumFromTo, upFromIncluding)
+import Data.Enum (class BoundedEnum, class Enum, upFromIncluding)
 import Data.Enum.Generic (genericCardinality, genericFromEnum, genericPred, genericSucc, genericToEnum)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
@@ -13,19 +13,29 @@ import Data.String (trim)
 import Data.Traversable (for_)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
-import Effect.Class (liftEffect)
-import Repl (Next(..), Result(..), replConfig, runRepl)
-import Terminal.Kit as T
-import Terminal.Kit.Color (Color8(..), Ground(..), Tone(..))
-import Terminal.Kit.Color as C
+import Effect.Class.Console as Console
+import Node.Process as Process
+import Readline (interfaceOptions)
+import Readline as Readline
+import Repl (Next(..), Result(..))
 
 main ∷ Effect Unit
 main = launchAff_ do
-  runRepl replConfig
-    { banner = "Halo"
-    , parseCommand = parseCommand
-    , evalCommand = evalCommand
-    }
+  iface ← Readline.createInterface
+    (interfaceOptions Process.stdin Process.stdout)
+      { prompt = ">>> "
+      }
+  Readline.onLine iface \line → do
+    Console.log line
+    case line of
+      "quit" → Readline.close iface
+      _ → pure unit
+
+-- runRepl replConfig
+--   { banner = "Halo"
+--   , parseCommand = parseCommand
+--   , evalCommand = evalCommand
+--   }
 
 data Command = Help | Test
 
@@ -62,38 +72,14 @@ evalCommand ∷ Command → Aff Result
 evalCommand command =
   Ok Continue <$ case command of
     Help → commandHelp
-    Test → commandTest
+    Test → pure unit
 
 commandHelp ∷ Aff Unit
 commandHelp = do
-  T.printLn "^+Available commands:^-"
   for_ (upFromIncluding bottom ∷ Array Command) \cmd →
-    T.printLn $ describeCommand cmd
+    Console.log $ describeCommand cmd
 
 describeCommand ∷ Command → String
 describeCommand = case _ of
   Help → "^bhelp^ - outputs this help."
   Test → "^btest^ - outputs 256 terminal colors."
-
-commandTest ∷ Aff Unit
-commandTest = liftEffect do
-  T.reset
-  C.withColor Back Dark Green \_ → C.withColor Fore Dark Black \_ →
-    T.print " Width: "
-  T.printShow =<< T.width
-  C.withColor Fore Dark Green \_ → T.print "\nHeight: "
-  T.printShow =<< T.height
-  T.print "\n"
-  for_ [ Back, Fore ] \g → do
-    for_ [ Dark, Bright ] \t →
-      for_ (enumFromTo Black White ∷ Array _) \c → do
-        C.withColor g t c \_ → do
-          T.printShow t
-          T.printShow c
-        T.print " "
-    for_ (enumFromTo 0 255 ∷ Array _) \c → do
-      C.color256 g c
-      T.printShow c
-      C.defaultColor g
-      T.print " "
-

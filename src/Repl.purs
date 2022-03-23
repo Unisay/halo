@@ -16,10 +16,12 @@ import Data.String (trim)
 import Data.Traversable (for_)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (liftAff)
+import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Class.Console as Console
-import Terminal.Kit as T
-import Terminal.Kit.Color (Color8(..), Ground(..), Tone(..))
-import Terminal.Kit.Color as C
+import Node.Encoding (Encoding(..))
+import Node.Process as Process
+import Node.Stream as Stream
+import Unsafe.Coerce (unsafeCoerce)
 
 type ReplM ∷ ∀ k. k → Type → Type
 type ReplM c = StateT ReplState Aff
@@ -79,14 +81,7 @@ runRepl config = evalStateT repl initialState
     }
 
   repl ∷ ReplM c Unit
-  repl = do
-    T.grabInput T.grabInputOptions
-    T.onKey \name _match _datum → do
-      case name of
-        "CTRL_D" → T.releaseInput *> T.print "exit\n"
-        "CTRL_C" → T.releaseInput *> T.print "Interrupted" *> T.processExit 0
-        _ → pure unit
-    loop >>= T.processExit
+  repl = loop >>= liftEffect <<< Process.exit
 
   loop ∷ ReplM c Int
   loop = untilJust do
@@ -95,10 +90,10 @@ runRepl config = evalStateT repl initialState
       Skip →
         pure $ Ok Continue
       Exit → do
-        for_ config.byeMessage T.print
+        for_ config.byeMessage Console.log
         pure $ Ok Abort
       Unknown → do
-        T.printLn config.unknownCommandMessage
+        printLn config.unknownCommandMessage
         let res = Error Continue
         modify_ _ { result = Just res }
         pure res
@@ -113,11 +108,11 @@ runRepl config = evalStateT repl initialState
   readCommand ∷ ReplM c (Input c)
   readCommand = do
     history ← gets _.history
-    command ← T.inputField T.inputFieldOptions
-      { cancelable = true
-      , history = history
-      }
-    T.nextLine 1
+    -- command ← T.inputField T.inputFieldOptions
+    --   { cancelable = true
+    --   , history = history
+    --   }
+    let command = unsafeCoerce unit
     pure case trim <$> command of
       Nothing → Skip
       Just "exit" → Exit
@@ -131,12 +126,10 @@ runRepl config = evalStateT repl initialState
 
   inviteCommand ∷ ReplM c Unit
   inviteCommand = do
-    T.print config.banner
+    Console.log config.banner
     lastCommandResult ← gets $ _.result >>> fromMaybe (Ok Continue)
-    C.withColor Fore Dark (statusColor lastCommandResult) \_ →
-      T.print config.pointer
-    where
-    statusColor ∷ Result → Color8
-    statusColor = case _ of
-      Error _ → Red
-      Ok _ → Green
+    Console.log config.pointer
+
+printLn ∷ ∀ m. MonadEffect m ⇒ String → m Unit
+printLn s = void $ liftEffect $ Stream.writeString Process.stdout UTF8 s
+  (pure unit)
