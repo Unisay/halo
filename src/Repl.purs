@@ -14,8 +14,9 @@ import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (trim)
 import Data.Traversable (for_)
+import Effect (Effect)
 import Effect.Aff (Aff)
-import Effect.Aff.Class (liftAff)
+import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Class.Console as Console
 import Node.Encoding (Encoding(..))
@@ -54,7 +55,7 @@ type ReplState =
 
 type ReplConfig c =
   { parseCommand ∷ String → Either String (Maybe c)
-  , evalCommand ∷ c → Aff Result
+  , evalCommand ∷ c → Effect Result
   , banner ∷ String
   , pointer ∷ String
   , unknownCommandMessage ∷ String
@@ -71,8 +72,8 @@ replConfig =
   , byeMessage: Just "Bye!"
   }
 
-runRepl ∷ ∀ c. ReplConfig c → Aff Unit
-runRepl config = evalStateT repl initialState
+runRepl ∷ ∀ m c. MonadAff m ⇒ ReplConfig c → m Unit
+runRepl config = liftAff $ evalStateT repl initialState
   where
   initialState ∷ ReplState
   initialState =
@@ -98,7 +99,7 @@ runRepl config = evalStateT repl initialState
         modify_ _ { result = Just res }
         pure res
       Cmd cmd → do
-        res ← liftAff $ config.evalCommand cmd
+        res ← liftEffect $ config.evalCommand cmd
         modify_ _ { result = Just res }
         pure res
     pure case shouldAbort result of

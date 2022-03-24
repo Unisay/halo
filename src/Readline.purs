@@ -13,6 +13,7 @@ import Effect.Uncurried
   , runEffectFn1
   , runEffectFn2
   )
+import Node.Process (stdin, stdout)
 import Node.Stream (Readable, Writable)
 
 data Interface
@@ -91,6 +92,9 @@ interfaceOptions input output =
   , tabSize: 8
   }
 
+stdIOInterface ∷ InterfaceOptions
+stdIOInterface = interfaceOptions stdin stdout
+
 foreign import _createInterface ∷ EffectFn1 InterfaceOptions Interface
 
 createInterface ∷ ∀ m. MonadEffect m ⇒ InterfaceOptions → m Interface
@@ -101,8 +105,14 @@ foreign import _close ∷ EffectFn1 Interface Unit
 close ∷ ∀ m. MonadEffect m ⇒ Interface → m Unit
 close = liftEffect <<< runEffectFn1 _close
 
+type PreserveCursor = Boolean
+
+foreign import _prompt ∷ EffectFn2 Interface PreserveCursor Unit
+
+prompt ∷ ∀ m. MonadEffect m ⇒ Interface → PreserveCursor → m Unit
+prompt iface = liftEffect <<< runEffectFn2 _prompt iface
+
 foreign import _onLine ∷ EffectFn2 Interface (EffectFn1 String Unit) Unit
 
 onLine ∷ ∀ m. MonadEffect m ⇒ Interface → (String → Effect Unit) → m Unit
 onLine iface = liftEffect <<< runEffectFn2 _onLine iface <<< mkEffectFn1
-

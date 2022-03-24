@@ -9,4 +9,5 @@ exports._createCompleter = (f) => (s) => {
 
 exports._createInterface = readline.createInterface;
 exports._close = (iface) => iface.close();
+exports._prompt = (iface, preserveCursor) => iface.prompt(preserveCursor);
 exports._onLine = (iface, callback) => iface.on('line', callback);

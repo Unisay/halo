@@ -14,28 +14,19 @@ import Data.Traversable (for_)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
 import Effect.Class.Console as Console
-import Node.Process as Process
-import Readline (interfaceOptions)
 import Readline as Readline
 import Repl (Next(..), Result(..))
 
 main ∷ Effect Unit
 main = launchAff_ do
-  iface ← Readline.createInterface
-    (interfaceOptions Process.stdin Process.stdout)
-      { prompt = ">>> "
-      }
+  iface ← Readline.createInterface Readline.stdIOInterface
+    { prompt = "Halo > " }
+  Readline.prompt iface true
   Readline.onLine iface \line → do
     Console.log line
     case line of
       "quit" → Readline.close iface
       _ → pure unit
-
--- runRepl replConfig
---   { banner = "Halo"
---   , parseCommand = parseCommand
---   , evalCommand = evalCommand
---   }
 
 data Command = Help | Test
 
