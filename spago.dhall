@@ -1,7 +1,6 @@
 { name = "halo"
 , dependencies =
   [ "aff"
-  , "aff-promise"
   , "console"
   , "datetime"
   , "effect"

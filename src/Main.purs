@@ -10,18 +10,32 @@ import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
 import Data.Show.Generic (genericShow)
 import Data.String (trim)
+import Data.String as String
 import Data.Traversable (for_)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
 import Effect.Class.Console as Console
+import Node.Process as Process
 import Readline as Readline
 import Repl (Next(..), Result(..))
 
 main ∷ Effect Unit
 main = launchAff_ do
   iface ← Readline.createInterface Readline.stdIOInterface
-    { prompt = "Halo > " }
-  Readline.prompt iface true
+    { prompt = "Halo ❯ "
+    , completer = Readline.createCompleter \s →
+        case String.trim s of
+          "q" → { entries: [ "quit" ], substring: "q" }
+          substring → { entries: [], substring }
+    } -- ➜
+  Readline.onKeyPressEvent Process.stdin \s key → do
+    Console.log $ "Str: " <> s <> " Key: "
+    Readline.dir key
+  Readline.question iface "How are you doing? " \reply →
+    Console.log $ "Reply: " <> reply
+  -- Readline.prompt iface true
+  Readline.onHistory iface \line → do
+    Console.log $ "History: " <> line
   Readline.onLine iface \line → do
     Console.log line
     case line of

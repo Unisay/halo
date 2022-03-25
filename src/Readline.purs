@@ -2,17 +2,11 @@ module Readline where
 
 import Prelude
 
-import Data.Nullable (Nullable, null)
+import Data.Nullable (Nullable, notNull, null)
 import Data.Time.Duration (Milliseconds(..))
 import Effect (Effect)
 import Effect.Class (class MonadEffect, liftEffect)
-import Effect.Uncurried
-  ( EffectFn1
-  , EffectFn2
-  , mkEffectFn1
-  , runEffectFn1
-  , runEffectFn2
-  )
+import Effect.Uncurried (EffectFn1, EffectFn2, EffectFn3, mkEffectFn1, mkEffectFn2, runEffectFn1, runEffectFn2, runEffectFn3)
 import Node.Process (stdin, stdout)
 import Node.Stream (Readable, Writable)
 
@@ -20,11 +14,11 @@ data Interface
 
 data Completer
 
-foreign import _createCompleter
+foreign import createCompleter
   ∷ (String → { entries ∷ Array String, substring ∷ String }) → Completer
 
 noCompleter ∷ Completer
-noCompleter = _createCompleter \substring → { entries: [], substring }
+noCompleter = createCompleter \substring → { entries: [], substring }
 
 type InterfaceOptions =
   { input ∷ Readable ()
@@ -112,7 +106,91 @@ foreign import _prompt ∷ EffectFn2 Interface PreserveCursor Unit
 prompt ∷ ∀ m. MonadEffect m ⇒ Interface → PreserveCursor → m Unit
 prompt iface = liftEffect <<< runEffectFn2 _prompt iface
 
+foreign import _question
+  ∷ EffectFn3 Interface String (EffectFn1 String Unit) Unit
+
+question
+  ∷ ∀ m
+  . MonadEffect m
+  ⇒ Interface
+  → String
+  → (String → Effect Unit)
+  → m Unit
+question iface text =
+  liftEffect <<< runEffectFn3 _question iface text <<< mkEffectFn1
+
 foreign import _onLine ∷ EffectFn2 Interface (EffectFn1 String Unit) Unit
 
 onLine ∷ ∀ m. MonadEffect m ⇒ Interface → (String → Effect Unit) → m Unit
 onLine iface = liftEffect <<< runEffectFn2 _onLine iface <<< mkEffectFn1
+
+foreign import _onHistory ∷ EffectFn2 Interface (EffectFn1 String Unit) Unit
+
+onHistory ∷ ∀ m. MonadEffect m ⇒ Interface → (String → Effect Unit) → m Unit
+onHistory iface = liftEffect <<< runEffectFn2 _onHistory iface <<< mkEffectFn1
+
+type Key =
+  { ctrl ∷ Boolean
+  , meta ∷ Boolean
+  , shift ∷ Boolean
+  , name ∷ String
+  }
+
+type KeyEvent =
+  { ctrl ∷ Boolean
+  , meta ∷ Boolean
+  , shift ∷ Boolean
+  , name ∷ String
+  , sequence ∷ String
+  }
+
+foreign import _write
+  ∷ EffectFn3 Interface (Nullable String) (Nullable Key) Unit
+
+write ∷ ∀ m. MonadEffect m ⇒ Interface → String → m Unit
+write iface s = liftEffect $ runEffectFn3 _write iface (notNull s) null
+
+writeKey ∷ ∀ m. MonadEffect m ⇒ Interface → Key → m Unit
+writeKey iface = liftEffect <<< runEffectFn3 _write iface null <<< notNull
+
+ctrl ∷ String → Key
+ctrl name = { ctrl: true, meta: false, shift: false, name }
+
+meta ∷ String → Key
+meta name = { ctrl: false, meta: true, shift: false, name }
+
+shift ∷ String → Key
+shift name = { ctrl: false, meta: false, shift: true, name }
+
+foreign import _emitKeypressEvents ∷ EffectFn1 (Readable ()) Unit
+
+foreign import _onKeypress
+  ∷ EffectFn2 (Readable ()) (EffectFn2 String KeyEvent Unit) Unit
+
+emitKeypressEvents ∷ ∀ m. MonadEffect m ⇒ Readable () → m Unit
+emitKeypressEvents = liftEffect <<< runEffectFn1 _emitKeypressEvents
+
+onKeyPress
+  ∷ ∀ m
+  . MonadEffect m
+  ⇒ Readable ()
+  → (String → KeyEvent → Effect Unit)
+  → m Unit
+onKeyPress stream = liftEffect
+  <<< runEffectFn2 _onKeypress stream
+  <<< mkEffectFn2
+
+onKeyPressEvent
+  ∷ ∀ m
+  . MonadEffect m
+  ⇒ Readable ()
+  → (String → KeyEvent → Effect Unit)
+  → m Unit
+onKeyPressEvent stream callback = do
+  emitKeypressEvents stream
+  onKeyPress stream callback
+
+foreign import _dir ∷ ∀ a. EffectFn1 a Unit
+
+dir ∷ ∀ a. a → Effect Unit
+dir = runEffectFn1 _dir
