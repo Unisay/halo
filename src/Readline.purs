@@ -2,9 +2,13 @@ module Readline where
 
 import Prelude
 
+import Data.Either (Either(..))
 import Data.Nullable (Nullable, notNull, null)
 import Data.Time.Duration (Milliseconds(..))
 import Effect (Effect)
+import Effect.Aff (makeAff)
+import Effect.Aff as Aff
+import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Uncurried (EffectFn1, EffectFn2, EffectFn3, mkEffectFn1, mkEffectFn2, runEffectFn1, runEffectFn2, runEffectFn3)
 import Node.Process (stdin, stdout)
@@ -106,23 +110,35 @@ foreign import _prompt ∷ EffectFn2 Interface PreserveCursor Unit
 prompt ∷ ∀ m. MonadEffect m ⇒ Interface → PreserveCursor → m Unit
 prompt iface = liftEffect <<< runEffectFn2 _prompt iface
 
-foreign import _question
-  ∷ EffectFn3 Interface String (EffectFn1 String Unit) Unit
+foreign import _setPrompt ∷ EffectFn2 Interface String Unit
 
-question
-  ∷ ∀ m
-  . MonadEffect m
-  ⇒ Interface
-  → String
-  → (String → Effect Unit)
-  → m Unit
-question iface text =
-  liftEffect <<< runEffectFn3 _question iface text <<< mkEffectFn1
+setPrompt ∷ ∀ m. MonadEffect m ⇒ Interface → String → m Unit
+setPrompt iface = liftEffect <<< runEffectFn2 _setPrompt iface
+
+foreign import _getPrompt ∷ EffectFn1 Interface String
+
+getPrompt ∷ ∀ m. MonadEffect m ⇒ Interface → m String
+getPrompt = liftEffect <<< runEffectFn1 _getPrompt
+
+foreign import _question
+  ∷ EffectFn3 Interface String (EffectFn1 String Unit) (Effect Unit)
+
+question ∷ ∀ m. MonadAff m ⇒ Interface → String → m String
+question iface text = liftAff do
+  makeAff \next → do
+    cancel ← runEffectFn3 _question iface text $ mkEffectFn1 $ next <<< Right
+    pure $ Aff.effectCanceler cancel
 
 foreign import _onLine ∷ EffectFn2 Interface (EffectFn1 String Unit) Unit
 
 onLine ∷ ∀ m. MonadEffect m ⇒ Interface → (String → Effect Unit) → m Unit
 onLine iface = liftEffect <<< runEffectFn2 _onLine iface <<< mkEffectFn1
+
+readLine ∷ ∀ m. MonadAff m ⇒ Interface → m String
+readLine iface = liftAff do
+  makeAff \next → do
+    onLine iface $ next <<< Right
+    pure $ Aff.nonCanceler
 
 foreign import _onHistory ∷ EffectFn2 Interface (EffectFn1 String Unit) Unit
 
@@ -145,13 +161,13 @@ type KeyEvent =
   }
 
 foreign import _write
-  ∷ EffectFn3 Interface (Nullable String) (Nullable Key) Unit
+  ∷ EffectFn3 (Writable ()) (Nullable String) (Nullable Key) Unit
 
-write ∷ ∀ m. MonadEffect m ⇒ Interface → String → m Unit
-write iface s = liftEffect $ runEffectFn3 _write iface (notNull s) null
+write ∷ ∀ m. MonadEffect m ⇒ Writable () → String → m Unit
+write stream s = liftEffect $ runEffectFn3 _write stream (notNull s) null
 
-writeKey ∷ ∀ m. MonadEffect m ⇒ Interface → Key → m Unit
-writeKey iface = liftEffect <<< runEffectFn3 _write iface null <<< notNull
+writeKey ∷ ∀ m. MonadEffect m ⇒ Writable () → Key → m Unit
+writeKey stream = liftEffect <<< runEffectFn3 _write stream null <<< notNull
 
 ctrl ∷ String → Key
 ctrl name = { ctrl: true, meta: false, shift: false, name }

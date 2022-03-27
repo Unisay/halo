@@ -1,6 +1,8 @@
 { name = "halo"
 , dependencies =
   [ "aff"
+  , "ansi"
+  , "arrays"
   , "console"
   , "datetime"
   , "effect"
@@ -8,7 +10,7 @@
   , "enums"
   , "foldable-traversable"
   , "maybe"
-  , "node-buffer"
+  , "newtype"
   , "node-process"
   , "node-streams"
   , "nullable"
@@ -16,7 +18,6 @@
   , "strings"
   , "tailrec"
   , "transformers"
-  , "unsafe-coerce"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

@@ -1,46 +1,45 @@
 module Main where
 
-import Prelude
+import Preamble
 
+import Ansi.Codes (Color(..))
+import Ansi.Output (bold, foreground, withGraphics)
+import Data.Array as Array
 import Data.Bounded.Generic (genericBottom, genericTop)
-import Data.Either (Either(..))
 import Data.Enum (class BoundedEnum, class Enum, upFromIncluding)
-import Data.Enum.Generic (genericCardinality, genericFromEnum, genericPred, genericSucc, genericToEnum)
+import Data.Enum.Generic
+  ( genericCardinality
+  , genericFromEnum
+  , genericPred
+  , genericSucc
+  , genericToEnum
+  )
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe(..))
 import Data.Show.Generic (genericShow)
 import Data.String (trim)
-import Data.String as String
 import Data.Traversable (for_)
 import Effect (Effect)
-import Effect.Aff (Aff, launchAff_)
+import Effect.Aff (launchAff_)
 import Effect.Class.Console as Console
-import Node.Process as Process
-import Readline as Readline
 import Repl (Next(..), Result(..))
+import Repl as Repl
 
 main ∷ Effect Unit
-main = launchAff_ do
-  iface ← Readline.createInterface Readline.stdIOInterface
-    { prompt = "Halo ❯ "
-    , completer = Readline.createCompleter \s →
-        case String.trim s of
-          "q" → { entries: [ "quit" ], substring: "q" }
-          substring → { entries: [], substring }
-    } -- ➜
-  Readline.onKeyPressEvent Process.stdin \s key → do
-    Console.log $ "Str: " <> s <> " Key: "
-    Readline.dir key
-  Readline.question iface "How are you doing? " \reply →
-    Console.log $ "Reply: " <> reply
-  -- Readline.prompt iface true
-  Readline.onHistory iface \line → do
-    Console.log $ "History: " <> line
-  Readline.onLine iface \line → do
-    Console.log line
-    case line of
-      "quit" → Readline.close iface
-      _ → pure unit
+main = launchAff_ $ Repl.run Repl.defConfig
+  { banner = "Halo"
+  , parseCommand = parseCommand
+  , evalCommand = evalCommand
+  , welcomeMessage = Just $ Array.fold
+      let
+        color fg = withGraphics (bold <> foreground fg)
+      in
+        [ "Welcome to "
+        , color BrightRed "H"
+        , color Green "A"
+        , color BrightBlue "L"
+        , color BrightMagenta "O"
+        ]
+  }
 
 data Command = Help | Test
 
@@ -73,18 +72,18 @@ parseCommand command =
     "test" → Right (Just Test)
     _ → Right Nothing
 
-evalCommand ∷ Command → Aff Result
+evalCommand ∷ Command → Effect Result
 evalCommand command =
   Ok Continue <$ case command of
     Help → commandHelp
     Test → pure unit
 
-commandHelp ∷ Aff Unit
+commandHelp ∷ Effect Unit
 commandHelp = do
   for_ (upFromIncluding bottom ∷ Array Command) \cmd →
     Console.log $ describeCommand cmd
 
 describeCommand ∷ Command → String
 describeCommand = case _ of
-  Help → "^bhelp^ - outputs this help."
-  Test → "^btest^ - outputs 256 terminal colors."
+  Help → withGraphics bold "help" <> " - outputs this help."
+  Test → withGraphics bold "test" <> " - outputs 256 terminal colors."

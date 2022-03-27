@@ -14,13 +14,21 @@ exports._close = (iface) => iface.close();
 
 exports._prompt = (iface, preserveCursor) => iface.prompt(preserveCursor);
 
-exports._question = (iface, s, callback) => iface.question(s, callback);
+exports._setPrompt = (iface, str) => iface.setPrompt(str);
+
+exports._getPrompt = (iface) => iface.getPrompt();
+
+exports._question = (iface, s, callback) => {
+  const ac = new AbortController();
+  iface.question(s, { signal: ac.signal }, callback);
+  return ac.abort;
+}
 
 exports._onLine = (iface, callback) => iface.on('line', callback);
 
 exports._onHistory = (iface, callback) => iface.on('history', callback);
 
-exports._write = (iface, data, key) => iface.write(data, key);
+exports._write = (stream, data, key) => stream.write(data, key);
 
 exports._emitKeypressEvents = (stream) => readline.emitKeypressEvents(stream);
 
